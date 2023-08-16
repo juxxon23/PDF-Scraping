@@ -2,6 +2,7 @@ import tabula
 
 def run():
     tables = tabula.read_pdf('PGARQUINDIO2020-2039_P372.pdf', pages='all')
+    print(tables)
     print(tables[0])
     print(tables[1])
 
