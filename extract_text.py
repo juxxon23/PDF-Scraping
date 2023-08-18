@@ -1,19 +1,97 @@
 import re # regular expressions
+import json
+import pandas as pd
+import numpy as np
 from pdfminer.high_level import extract_pages, extract_text
 from pdfminer.layout import LTTextContainer, LTTextLineHorizontal
 
 
-pdf_results = []
-q1_value = 'rio san juan'
-# Recorre cada pagina y extrae sus elementos
-for page_layout in extract_pages("MODELACIONRIOROJO.pdf"):
-    q_count = 0
-    for element in page_layout:
-        if isinstance(element, LTTextContainer):
-            pag = element.get_text().lower()
-            q_count += pag.count(q1_value)
-    res = (len(pdf_results) + 1, q_count)
-    pdf_results.append(res)
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.int64):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)
+
+
+def generate():
+    exclude_words = ["interseccion", "bocatoma", "estacion", "monitoreo", "cañada", "nacimiento", "rio"]
+    qdf = pd.read_csv('docs/nodos.csv')
+    cols = qdf.columns
+    number_nodes = qdf[cols[0]]
+    name_nodes = [qdf.loc[qdf[cols[0]] == num_node, [cols[0], cols[2]]] for num_node in number_nodes] # Number - Name
+    qr = {}
+    for nam_node in name_nodes:
+        for row in nam_node.index:
+            ex_count = 0
+            for ex in exclude_words:
+                if ex in nam_node.loc[row][cols[2]]:
+                    ex_count += 1
+            if ex_count == 0:
+                qr[int(nam_node.loc[row][cols[0]])] = [nam_node.loc[row][cols[2]]]
+    return qr
+
+
+def add_dict(qr):
+    for k in qr.keys():
+        qr[k].append({})
+    return qr
+
+
+def push_elem_dict(qr, value):
+    for k in qr.keys():
+        qr[k][len(qr[k])-1][value] = 0
+    return qr
+
+
+def write_json(qr):
+    with open("q_pdf_count.json", 'w') as new_file:
+        json.dump(qr, new_file, indent=4, cls=NpEncoder)
+
+
+def search():
+    pdf_names = ["MODELACIONRIOROJO",
+                 "MODELACIONRIOAZUL",
+                 "modelaciondelacalidaddelaguariosanjuanmunicipiogenovaquindio",
+                 "modelaciondelacalidaddelaguarioroblemunicipioscircasiamontenegroquindio",
+                 "Informe-de-Evaluacion-de-Meta-Global-de-Carga-Contaminante-Ano-2021"]
+    qr = generate()
+    for pdf_name in pdf_names:
+        p_count = 0
+        qr = add_dict(qr)
+        qr = push_elem_dict(qr, p_count)
+        for page_layout in extract_pages(f"docs/crq/{pdf_name}.pdf"): #Recorre las paginas
+            for element in page_layout: #Recorre los elementos de una pagina
+                if isinstance(element, LTTextContainer):
+                    pag = element.get_text().lower()
+                    for k in qr.keys():
+                        #q_count += pag.count(qr[k][0])
+                        qr[k][len(qr[k])-1][p_count] += pag.count(qr[k][0]) #falta definir res
+    return qr
+
+
+qr1 = search()
+write_json(qr1)
+#print(qr1)
+
+
+
+
+
+
+#cont = 0
+#for i in q_nodes['nombre_fixed']:
+#    if "quebrada" not in i:
+#        print(i)
+#        cont += 1
+#for i in name_nodes:
+#    print(i[cols[2]])
+#q1_value = 'rio san juan'
+
+
 
 """
 No hay diferencia respecto a la funcion activa,
@@ -31,7 +109,7 @@ for page_layout in extract_pages("MODELACIONRIOROJO.pdf"):
     pdf_results.append(res)
 
 """
-print(pdf_results)
+#print(pdf_results)
 
 #text = extract_text("PGARQUINDIO2020-2039_P372.pdf").lower()
 #
