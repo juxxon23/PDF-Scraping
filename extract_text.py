@@ -31,7 +31,8 @@ def generate():
                 if ex in nam_node.loc[row][cols[2]]:
                     ex_count += 1
             if ex_count == 0:
-                qr[int(nam_node.loc[row][cols[0]])] = [nam_node.loc[row][cols[2]]]
+                val = (nam_node.loc[row][cols[2]]).replace("quebrada", " ").strip()
+                qr[int(nam_node.loc[row][cols[0]])] = [val]
     return qr
 
 
@@ -60,16 +61,15 @@ def search():
                  "Informe-de-Evaluacion-de-Meta-Global-de-Carga-Contaminante-Ano-2021"]
     qr = generate()
     for pdf_name in pdf_names:
-        p_count = 0
         qr = add_dict(qr)
-        qr = push_elem_dict(qr, p_count)
+        qr = push_elem_dict(qr, pdf_name)
         for page_layout in extract_pages(f"docs/crq/{pdf_name}.pdf"): #Recorre las paginas
             for element in page_layout: #Recorre los elementos de una pagina
                 if isinstance(element, LTTextContainer):
                     pag = element.get_text().lower()
                     for k in qr.keys():
                         #q_count += pag.count(qr[k][0])
-                        qr[k][len(qr[k])-1][p_count] += pag.count(qr[k][0]) #falta definir res
+                        qr[k][len(qr[k])-1][pdf_name] += pag.count(qr[k][0]) #falta definir res
     return qr
 
 
